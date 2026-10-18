@@ -1,6 +1,6 @@
 # VFETCH
+![alt text](image.png)
 
-![VFetch terminal preview](docs/vfetch-preview.svg)
 
 VFetch is a cross-platform Python 3.9+ terminal front-end for yt-dlp. It supports Windows 10/11, macOS, and Linux, with profiles for best video, audio extraction, and custom format expressions.
 
