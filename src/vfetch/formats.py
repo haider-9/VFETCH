@@ -57,4 +57,7 @@ def render_table(info, width=100, ascii_mode=False) -> str:
                 row = f"{item.get('format_id','—'):>8} {resolution:<10} {str(item.get('fps') or '—'):>4} {codec_name(item.get('vcodec')):<7} {item.get('ext','—'):<4} {item.get('tbr') or 0:>6}k {size_text(item,duration):>10} {tag}"
             lines.append(row[:width])
     lines += [f"\n{star} Best pair, paste into option [3]:", f"  {best_pair(info)}"]
-    return "\n".join(lines)
+    rendered = "\n".join(lines)
+    if ascii_mode:
+        rendered = rendered.replace("—", "-").replace("▶", ">").replace("★", "*").replace("·", "|").replace("…", "...")
+    return rendered

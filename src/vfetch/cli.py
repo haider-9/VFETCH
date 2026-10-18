@@ -20,27 +20,56 @@ def main(argv=None):
     output = Path(args.directory or os.environ.get("VFETCH_DIR") or default_dir()).expanduser()
     try: output.mkdir(parents=True, exist_ok=True)
     except OSError as error: print(f"[ERROR] Cannot write to {output}: {error}"); return 1
-    ui = UI(args.no_color, args.ascii); ui.banner(yt_dlp.version.__version__, ffmpeg_path(), output)
+    ui = UI(args.no_color, args.ascii)
+    ui.banner(yt_dlp.version.__version__, ffmpeg_path(), output)
     url = clean_url(args.url) if args.url else None
     while True:
         ui.section("01 / SOURCE")
         if not url:
-            try: url = clean_url(input("  Paste a video URL below (q to quit): "))
+            try:
+                print("  Paste a video URL below " + ui.paint(245, "(q to quit)") + ".\n")
+                url = clean_url(input("  " + ui.paint(208, "❯" if not ui.ascii else ">") + " "))
             except (EOFError, KeyboardInterrupt): print("\n\n  [CANCELLED] Interrupted."); return 130
         if url.lower() in ("q", "quit", "exit"): return 0
-        if not valid_url(url): print("\n  [ERROR] That doesn't look like an http(s) URL."); url = None; continue
+        if not valid_url(url):
+            ui.status(203, "ERROR", "That doesn't look like an http(s) URL.")
+            print()
+            url = None
+            continue
         try:
-            ui.section("02 / AVAILABLE FORMATS"); info = extract(url); print(render_table(info, ascii_mode=ui.ascii))
-            ui.section("03 / DOWNLOAD PROFILE"); print("  [1] Best video + audio\n  [2] Audio only\n  [3] Custom format expression")
-            profile = input("  Select profile [1]: ").strip() or "1"; profile = profile if profile in ("1", "2", "3") else profile
-            if profile == "3": profile = input("  Format expression: ").strip()
-            elif profile not in ("1", "2"): profile = profile
-            ui.section("04 / READY TO DOWNLOAD"); print(f"  PROFILE      {profile}\n  CONTAINER    {'MKV' if profile == '1' else 'MP3' if profile == '2' and ffmpeg_path() else 'source'}\n  DESTINATION  {output}")
-            if input("  Start download? [Y/n] ").strip().lower() == "n": url = None; continue
-            ui.section("05 / DOWNLOAD"); path, elapsed = run_download(url, output, profile, ui, bool(ffmpeg_path()))
-            print(f"\n  [SUCCESS] Download complete.\n  FILE         {path}\n  TIME         {elapsed:.1f}s\n  SAVED TO     {output}" if path else "\n  [FAILED] Download did not produce a file.")
-        except KeyboardInterrupt: print("\n\n  [CANCELLED] Interrupted."); return 130
-        except Exception as error: print(f"\n  [FAILED] {error}\n  Tip: run vfetch --update\n  ffmpeg: {ffmpeg_hint()}")
+            ui.section("02 / AVAILABLE FORMATS")
+            info = extract(url)
+            print(render_table(info, ascii_mode=ui.ascii))
+            ui.section("03 / DOWNLOAD PROFILE")
+            print("  " + ui.paint(208, "[1]") + " Best quality video + audio")
+            print("  " + ui.paint(208, "[2]") + (" Audio only (MP3)" if ffmpeg_path() else " Audio only (best available, no conversion)"))
+            print("  " + ui.paint(208, "[3]") + " Custom format ID or expression\n")
+            profile = input("  Selection " + ui.paint(245, "[1]") + ": ").strip() or "1"
+            mode = profile
+            if profile == "1":
+                mode, container = ("Best quality video + audio", "MKV (streams merged)") if ffmpeg_path() else ("Best single-file quality (ffmpeg not found)", "Original, no merging")
+            elif profile == "2":
+                mode, container = (("Audio only (MP3)", "MP3") if ffmpeg_path() else ("Best available audio (no conversion)", "Original"))
+            elif profile == "3":
+                print("\n  Enter a format ID or yt-dlp format expression.\n  Examples: 137+ba/b, 140, bestvideo+bestaudio")
+                mode = input("  " + ui.paint(208, "❯" if not ui.ascii else ">") + " ").strip()
+                profile, container = mode, "MKV when merging is needed" if ffmpeg_path() else "Original"
+            else:
+                mode, container = f"Custom format: {profile}", "MKV when merging is needed" if ffmpeg_path() else "Original"
+            ui.section("04 / READY TO DOWNLOAD")
+            ui.info("PROFILE", mode); ui.info("CONTAINER", container); ui.info("DESTINATION", str(output))
+            if input("\n  Start download? " + ui.paint(245, "[Y/n]") + ": ").strip().lower() not in ("", "y", "yes"):
+                ui.status(245, "CANCELLED", "Download cancelled."); url = None; continue
+            ui.section("05 / DOWNLOAD")
+            path, elapsed = run_download(url, output, profile, ui, bool(ffmpeg_path()))
+            if path:
+                ui.status(114, "SUCCESS", "Download completed.")
+                ui.info("FILE", path.name); ui.info("SIZE", f"{path.stat().st_size} bytes"); ui.info("TIME", f"{int(elapsed // 60):02d}:{int(elapsed % 60):02d}"); ui.info("SAVED TO", str(output))
+            else: ui.status(203, "FAILED", "yt-dlp did not produce a file.")
+        except KeyboardInterrupt:
+            print("\n\n  [CANCELLED] Interrupted."); return 130
+        except Exception as error:
+            ui.status(203, "FAILED", str(error)); print("\n  Tip: run vfetch --update\n  ffmpeg: " + ffmpeg_hint())
         try: again = input("\n  Download another? [y/N] ").strip().lower()
         except (EOFError, KeyboardInterrupt): print("\n  [CANCELLED] Interrupted."); return 130
         if again != "y": return 0
