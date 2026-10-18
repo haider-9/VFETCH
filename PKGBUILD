@@ -1,0 +1,10 @@
+pkgname=vfetch
+pkgver=3.0.0
+pkgrel=1
+pkgdesc='Friendly cross-platform yt-dlp terminal downloader'
+arch=('any')
+depends=('python' 'yt-dlp')
+optdepends=('ffmpeg: merging and MP3 conversion')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/haider-9/VFETCH/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+package() { cd "$srcdir/VFETCH-$pkgver"; python -m installer --destdir="$pkgdir" .; }

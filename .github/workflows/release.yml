@@ -1,0 +1,14 @@
+name: Release
+on: {push: {tags: ['v*']}}
+jobs:
+  binaries:
+    strategy: {matrix: {os: [ubuntu-latest, windows-latest, macos-latest]}}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install . pyinstaller
+      - run: pyinstaller --onefile --collect-submodules yt_dlp packaging/entry.py -n vfetch
+      - uses: actions/upload-artifact@v4
+        with: {name: vfetch-${{ matrix.os }}, path: dist/vfetch*}
