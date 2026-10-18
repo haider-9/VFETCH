@@ -19,6 +19,9 @@ The installers add a `vfetch` command:
   ```powershell
   $env:Path = [Environment]::GetEnvironmentVariable("Path", "User")
   ```
+  The installer recreates its private environment on each install and uses
+  copied Python files so it also works with redirected Microsoft Store Python
+  installations.
 - On Linux and macOS, it is installed as `~/.local/bin/vfetch`. If
   `vfetch` is not found, add that directory to your shell PATH permanently:
   ```bash
