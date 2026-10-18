@@ -22,7 +22,7 @@ def main(argv=None):
     try: output.mkdir(parents=True, exist_ok=True)
     except OSError as error: print(f"[ERROR] Cannot write to {output}: {error}"); return 1
     ui = UI(args.no_color, args.ascii)
-    ui.banner(yt_dlp.version.__version__, ffmpeg_path(), output)
+    ui.banner(yt_dlp.version.__version__, ffmpeg_path(), output, __version__)
     url = clean_url(args.url) if args.url else None
     while True:
         ui.section("01 / SOURCE")
@@ -54,6 +54,10 @@ def main(argv=None):
             elif profile == "3":
                 print("\n  Enter a format ID or yt-dlp format expression.\n  Examples: 137+ba/b, 140, bestvideo+bestaudio")
                 mode = input("  " + ui.paint(208, "❯" if not ui.ascii else ">") + " ").strip()
+                if not mode:
+                    ui.status(203, "ERROR", "No format entered.")
+                    url = None
+                    continue
                 profile, container = mode, "MKV when merging is needed" if ffmpeg_path() else "Original"
             else:
                 mode, container = f"Custom format: {profile}", "MKV when merging is needed" if ffmpeg_path() else "Original"
@@ -69,7 +73,7 @@ def main(argv=None):
             else: ui.status(203, "FAILED", "yt-dlp did not produce a file.")
         except KeyboardInterrupt:
             print("\n\n  [CANCELLED] Interrupted."); return 130
-        except Exception as error:
+        except (yt_dlp.utils.DownloadError, OSError, ValueError) as error:
             ui.status(203, "FAILED", str(error)); print("\n  Tip: run vfetch --update\n  ffmpeg: " + ffmpeg_hint())
         try: again = input("\n  Download another? [y/N] ").strip().lower()
         except (EOFError, KeyboardInterrupt): print("\n  [CANCELLED] Interrupted."); return 130

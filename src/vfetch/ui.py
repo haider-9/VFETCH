@@ -44,11 +44,11 @@ class UI:
     def status(self, code, key, message):
         print(f"\n  {self.paint(code, '[' + key + ']', True)} {message}")
 
-    def banner(self, engine, ffmpeg, output):
+    def banner(self, engine, ffmpeg, output, version):
         rows = ("██╗   ██╗███████╗███████╗████████╗ ██████╗██╗  ██╗", "██║   ██║██╔════╝██╔════╝╚══██╔══╝██╔════╝██║  ██║", "██║   ██║█████╗  █████╗     ██║   ██║     ███████║", "╚██╗ ██╔╝██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║", " ╚████╔╝ ██║     ███████╗   ██║   ╚██████╗██║  ██║", "  ╚═══╝  ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝") if not self.ascii else ("V F E T C H",)
         for index, row in enumerate(rows):
             print("  " + (self.paint((202, 208, 208, 214, 214, 220)[index], row) if self.color else row))
-        print(f"\n  {self.paint(231, 'VIDEO DOWNLOADER', True)} {self.paint(MUTED, 'v3.0.0')}\n")
+        print(f"\n  {self.paint(231, 'VIDEO DOWNLOADER', True)} {self.paint(MUTED, 'v' + version)}\n")
         self.line()
         self.info("ENGINE", f"yt-dlp {engine}")
         self.info("FFMPEG", self.paint(GREEN if ffmpeg else RED, "found" if ffmpeg else "missing") + ("" if ffmpeg else " " + self.paint(MUTED, "(merging and MP3 disabled)")))
