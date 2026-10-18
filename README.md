@@ -19,9 +19,8 @@ The installers add a `vfetch` command:
   ```powershell
   $env:Path = [Environment]::GetEnvironmentVariable("Path", "User")
   ```
-  The installer recreates its private environment on each install and uses
-  copied Python files so it also works with redirected Microsoft Store Python
-  installations.
+  The installer recreates its private package directory on each install and
+  works with redirected Microsoft Store Python installations.
 - On Linux and macOS, it is installed as `~/.local/bin/vfetch`. If
   `vfetch` is not found, add that directory to your shell PATH permanently:
   ```bash
@@ -39,5 +38,8 @@ After that, run VFetch from any terminal with:
 ```bash
 vfetch
 ```
+
+The URL prompt supports normal line editing: use the arrow keys to move the
+cursor, and Backspace/Delete to edit a pasted URL.
 
 The old bash install is backed up as `~/.local/bin/vfetch.bak-bash` by the installer.

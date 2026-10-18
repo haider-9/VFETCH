@@ -9,7 +9,7 @@ description = "A friendly cross-platform terminal front-end for yt-dlp"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
-dependencies = ["yt-dlp[default]"]
+dependencies = ["yt-dlp[default]", "prompt-toolkit>=3.0"]
 
 [project.scripts]
 vfetch = "vfetch.cli:main"

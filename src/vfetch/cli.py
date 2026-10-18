@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 import yt_dlp
+from prompt_toolkit import prompt
 from . import __version__
 from .download import extract, run_download
 from .formats import render_table
@@ -28,7 +29,7 @@ def main(argv=None):
         if not url:
             try:
                 print("  Paste a video URL below " + ui.paint(245, "(q to quit)") + ".\n")
-                url = clean_url(input("  " + ui.paint(208, "❯" if not ui.ascii else ">") + " "))
+                url = clean_url(prompt("  ❯ " if not ui.ascii else "  > "))
             except (EOFError, KeyboardInterrupt): print("\n\n  [CANCELLED] Interrupted."); return 130
         if url.lower() in ("q", "quit", "exit"): return 0
         if not valid_url(url):
