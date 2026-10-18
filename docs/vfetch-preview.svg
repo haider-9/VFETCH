@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1290" height="765" viewBox="0 0 1290 765">
+<rect width="1290" height="765" fill="#39344f"/>
+<rect width="1290" height="5" fill="#70208a"/>
+<path d="M1289 208L1289 426 145 765 0 765 0 765z" fill="#4b3265" opacity=".62"/>
+<path d="M1289 428L1289 522 596 765 475 765z" fill="#452d60" opacity=".45"/>
+<circle cx="13" cy="28" r="5" fill="#8c8a91"/>
+<polygon points="31,20 31,36 44,28" fill="#8c8a91"/>
+<text x="55" y="35" fill="#d8d3e1" font-family="monospace" font-size="20">vfetch</text>
+<g font-family="DejaVu Sans Mono, monospace" font-weight="900" font-size="108" stroke="#ff7a00" stroke-width="3" paint-order="stroke" letter-spacing="-8">
+<text x="28" y="121" fill="#ff5b00">VFETCH</text>
+<text x="28" y="178" fill="#ffb000" stroke="#ff9b00">VFETCH</text>
+</g>
+<text x="30" y="250" fill="#f4f1f4" font-family="monospace" font-weight="bold" font-size="19">VIDEO DOWNLOADER</text>
+<text x="235" y="250" fill="#9993a6" font-family="monospace" font-size="19">v3.0.0</text>
+<line x1="30" y1="297" x2="703" y2="297" stroke="#aaa5a5" stroke-width="2"/>
+<g font-family="monospace" font-size="19">
+<text x="31" y="332" fill="#9993a6">ENGINE</text><text x="187" y="332" fill="#e0dbe6">yt-dlp 2026.08.19</text>
+<text x="31" y="359" fill="#9993a6">FFMPEG</text><text x="187" y="359" fill="#74d37a">found</text>
+<text x="31" y="386" fill="#9993a6">SYSTEM</text><text x="187" y="386" fill="#e0dbe6">Python 3.12 / Linux</text>
+<text x="31" y="413" fill="#9993a6">OUTPUT</text><text x="187" y="413" fill="#e0dbe6">/home/haider/Videos/Downloads</text>
+<text x="31" y="440" fill="#9993a6">MODE</text><text x="187" y="440" fill="#e0dbe6">Single video, no playlist</text>
+</g>
+<line x1="30" y1="459" x2="703" y2="459" stroke="#aaa5a5" stroke-width="2"/>
+<text x="31" y="521" fill="#ff9900" font-family="monospace" font-size="19">01 / SOURCE</text>
+<line x1="30" y1="540" x2="703" y2="540" stroke="#aaa5a5" stroke-width="2"/>
+<text x="31" y="575" fill="#e0dbe6" font-family="monospace" font-size="19">Paste a video URL below <tspan fill="#9993a6">(q to quit)</tspan>.</text>
+<text x="31" y="634" fill="#ff9900" font-family="monospace" font-size="25">›</text><rect x="55" y="622" width="12" height="22" fill="#e0dbe6"/>
+</svg>
