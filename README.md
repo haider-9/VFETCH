@@ -14,6 +14,11 @@ Development install: `python -m pip install .` or `pipx install git+https://gith
 
 The installers add a `vfetch` command:
 
+- `ffmpeg` is installed before VFetch when it is missing. Linux uses the
+  available `apt-get`, `dnf`, `pacman`, `zypper`, or `apk` package manager
+  (with `sudo` when needed), macOS uses Homebrew, and Windows uses `winget`,
+  Chocolatey, or Scoop. If no supported package manager is available, install
+  `ffmpeg` and run the installer again.
 - On Windows, it is installed under `%LOCALAPPDATA%\vfetch` and that folder is
   added to your user PATH. Restart PowerShell after installation, or run:
   ```powershell

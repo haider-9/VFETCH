@@ -1,6 +1,26 @@
 $ErrorActionPreference = "Stop"
 $root = Join-Path $env:LOCALAPPDATA "vfetch"
 if ($env:VFETCH_UNINSTALL -eq "1") { Remove-Item -Recurse -Force $root -ErrorAction SilentlyContinue; exit }
+$ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
+if (-not $ffmpeg) {
+    Write-Host "ffmpeg is required by VFetch and was not found. Installing it first..."
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    $choco = Get-Command choco -ErrorAction SilentlyContinue
+    $scoop = Get-Command scoop -ErrorAction SilentlyContinue
+    if ($winget) {
+        & $winget.Source install --id Gyan.FFmpeg.Shared --exact --accept-source-agreements --accept-package-agreements
+    } elseif ($choco) {
+        & $choco.Source install ffmpeg -y
+    } elseif ($scoop) {
+        & $scoop.Source install ffmpeg
+    } else {
+        throw "Cannot install ffmpeg automatically. Install winget, Chocolatey, or Scoop, then run this installer again."
+    }
+    $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+        [Environment]::GetEnvironmentVariable("Path", "User")
+    $ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
+    if (-not $ffmpeg) { throw "ffmpeg installation did not complete successfully." }
+}
 $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
 if ($pyLauncher) {
     $pythonCommand = $pyLauncher.Source
