@@ -11,7 +11,7 @@ from yt_dlp.version import __version__ as YTDLP_VERSION
 
 from . import __version__
 from .download import extract, run_download
-from .formats import render_table
+from .formats import codec_name, group_formats, render_table
 from .ui import UI
 from .util import (
     clean_url,
@@ -25,6 +25,7 @@ from .util import (
 )
 
 QUIT_WORDS = ("q", "quit", "exit")
+BACK = object()          # sentinel: user asked to return to the previous tab
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -102,46 +103,166 @@ def ask_url(ui: UI, preset):
         return url
 
 
-def choose_profile(ui: UI, have_ffmpeg: bool):
-    """Return (profile, mode_label, container_label) or None if nothing was chosen."""
-    ui.section("03 / DOWNLOAD PROFILE")
-    print("  " + ui.paint(208, "[1]") + " Best quality video + audio")
-    print("  " + ui.paint(208, "[2]") + (" Audio only (MP3)" if have_ffmpeg else " Audio only (best available, no conversion)"))
-    print("  " + ui.paint(208, "[3]") + " Custom format ID or expression\n")
-    choice = read_line("  Selection " + ui.paint(245, "[1]") + ": ").strip() or "1"
-    choice = {"best": "1", "audio": "2", "custom": "3"}.get(choice.lower(), choice)
-    custom_container = "MKV when merging is needed" if have_ffmpeg else "Original"
+def build_tabs(groups):
+    """Tabs for this source: VIDEO and/or AUDIO, always ending with CONFIRM."""
+    tabs = []
+    if groups["VIDEO ONLY"] or groups["VIDEO + AUDIO"]:
+        if groups["VIDEO ONLY"] and groups["AUDIO ONLY"]:
+            names = ("VIDEO ONLY",)                 # split source: video tab = the video stream
+        else:
+            names = tuple(n for n in ("VIDEO + AUDIO", "VIDEO ONLY") if groups[n])
+        tabs.append(("VIDEO", names))
+    if groups["AUDIO ONLY"]:
+        tabs.append(("AUDIO", ("AUDIO ONLY",)))
+    tabs.append(("CONFIRM", None))
+    return tabs
 
-    if choice == "1":
-        if have_ffmpeg:
-            return "1", "Best quality video + audio", "MKV (streams merged)"
-        return "1", "Best single-file quality (ffmpeg not found)", "Original, no merging"
-    if choice == "2":
-        if have_ffmpeg:
-            return "2", "Audio only (MP3)", "MP3"
-        return "2", "Best available audio (no conversion)", "Original"
-    if choice == "3":
-        print("\n  Enter a format ID or yt-dlp format expression.")
-        print("  Examples: 137+ba/b, 140, bestvideo+bestaudio")
-        arrow = ">" if ui.ascii else "❯"
-        choice = read_line("  " + ui.paint(208, arrow) + " ").strip()
-        if not choice:
-            ui.status(203, "ERROR", "No format entered.")
+
+def flow_text(tabs):
+    names = [name for name, _ in tabs]
+    if "VIDEO" in names and "AUDIO" in names:
+        return "choose a VIDEO format, then an AUDIO format, then merge both streams into a single file"
+    if "VIDEO" in names:
+        return "choose a VIDEO format, then confirm the download"
+    return "choose an AUDIO format, then confirm the download"
+
+
+def draw_tabs(ui: UI, tabs, active):
+    cells = []
+    for number, (name, _) in enumerate(tabs, 1):
+        label = f"{number} {name}"
+        cells.append(ui.paint(208, f"< {label} >", True) if name == active
+                     else ui.paint(245, f"  {label}  "))
+    print("  " + " ".join(cells))
+
+
+def ask_format(ui: UI, items, label):
+    """Return a chosen format item, a custom-expression pseudo-item, BACK, or None to quit."""
+    listed = {str(item.get("format_id")) for item in items}
+    while True:
+        raw = read_line(f"  Choose {label} format "
+                        + ui.paint(245, "[Enter=best, b=back, q=quit]") + ": ").strip()
+        low = raw.lower()
+        if low in QUIT_WORDS:
             return None
-    # Anything else is treated as a format expression typed directly.
-    return choice, f"Custom format: {choice}", custom_container
+        if low in ("b", "back"):
+            return BACK
+        if not raw:
+            return items[0]
+        if raw in listed:
+            return next(item for item in items if str(item.get("format_id")) == raw)
+        if re.search(r"[+/,]", raw) or low.startswith("best"):
+            return {"format_id": raw, "custom": True, "vcodec": None, "acodec": None}
+        ui.status(203, "ERROR", f"'{raw}' is not one of the format IDs listed above.")
 
 
-def confirm(ui: UI, mode: str, container: str, output: Path) -> bool:
-    ui.section("04 / READY TO DOWNLOAD")
+def choose_formats(ui: UI, info, groups, tabs, color):
+    """Walk the tabs in order; return {"video": item|None, "audio": item|None} or None to quit."""
+    picks = {"video": None, "audio": None}
+    steps = len(tabs) - 1
+    index = 0
+    while index < steps:
+        name, names = tabs[index]
+        print()
+        draw_tabs(ui, tabs, name)
+        print(f"  {ui.paint(231, 'STEP ' + str(index + 1) + '/' + str(steps))}"
+              f"  Pick a {name} format from the list below.")
+        items = [item for group_name in names for item in groups[group_name]]
+        print()
+        print(render_table(info, ascii_mode=ui.ascii, color=color, only=names))
+        answer = ask_format(ui, items, name)
+        if answer is None:
+            return None
+        if answer is BACK:
+            index = max(0, index - 1)
+            continue
+        picks[name.lower()] = answer
+        index += 1
+    return picks
+
+
+def fmt_id(item) -> str:
+    return str(item.get("format_id"))
+
+
+def describe_selection(video, audio, mp3, have_ffmpeg):
+    """Return (profile, mode, container, note) for the chosen VIDEO/AUDIO formats."""
+    custom_container = "MKV when merging is needed" if have_ffmpeg else "Original"
+    if video is None and audio is None:
+        if have_ffmpeg:
+            return "1", "Best quality video + audio", "MKV (streams merged)", None
+        return "1", "Best single-file quality (ffmpeg not found)", "Original, no merging", None
+    if video is not None and audio is not None:
+        if have_ffmpeg:
+            return (f"{fmt_id(video)}+{fmt_id(audio)}",
+                    f"Video {fmt_id(video)} + audio {fmt_id(audio)}",
+                    "MKV (streams merged)", None)
+        return ("1", "Best single-file quality (ffmpeg not found)", "Original, no merging",
+                "ffmpeg is missing, so the streams cannot be merged - using the best single file instead.")
+    if video is not None:
+        vid = fmt_id(video)
+        if video.get("custom"):
+            return vid, f"Custom format: {vid}", custom_container, None
+        has_audio = video.get("acodec") not in (None, "none")
+        if has_audio:
+            return vid, f"Video {vid}", "Original, no merging", None
+        if have_ffmpeg:
+            return f"{vid}+ba/b", f"Video {vid} + best audio", "MKV (streams merged)", None
+        return (vid, f"Video {vid}", "Original, no merging",
+                "ffmpeg is missing - this video stream has no audio track of its own.")
+    aid = fmt_id(audio)
+    if audio.get("custom"):
+        return aid, f"Custom format: {aid}", custom_container, None
+    if mp3:
+        return f"{aid}|mp3", "Audio only (MP3)", "MP3", None
+    return aid, f"Audio only ({aid})", "Original", None
+
+
+def confirm(ui: UI, output: Path, tabs, video, audio, have_ffmpeg):
+    """Show the CONFIRM tab; return the yt-dlp format expression, or None if cancelled."""
+    ui.section("03 / CONFIRM")
+    draw_tabs(ui, tabs, "CONFIRM")
+    dash = "-" if ui.ascii else "—"
+
+    def summary(item, kind):
+        if item.get("custom"):
+            return ui.paint(245, "custom format expression")
+        if kind == "video":
+            detail = codec_name(item.get("vcodec"), dash) + "/" + codec_name(item.get("acodec"), dash)
+            height = item.get("height")
+            if height:
+                detail = f"{int(height)}p {detail}"
+        else:
+            detail = codec_name(item.get("acodec"), dash)
+            br = item.get("abr") or item.get("tbr")
+            if br:
+                detail += f" {round(br)}k"
+        return f"{fmt_id(item)}  {ui.paint(245, detail)}"
+
+    if video is not None:
+        ui.info("VIDEO", summary(video, "video"))
+    if audio is not None:
+        ui.info("AUDIO", summary(audio, "audio"))
+
+    mp3 = False
+    if audio is not None and video is None and have_ffmpeg:
+        answer = read_line("\n  Convert to MP3? " + ui.paint(245, "[Y/n]") + ": ").strip().lower()
+        mp3 = answer in ("", "y", "yes")
+
+    profile, mode, container, note = describe_selection(video, audio, mp3, have_ffmpeg)
+    arrow = "->" if ui.ascii else "→"
+    shown = profile[:-4] + f"  {arrow}  MP3" if profile.endswith("|mp3") else profile
     ui.info("PROFILE", mode)
+    ui.info("FORMAT", shown)
     ui.info("CONTAINER", container)
     ui.info("DESTINATION", str(output))
+    if note:
+        ui.status(221, "NOTE", note)
     answer = read_line("\n  Start download? " + ui.paint(245, "[Y/n]") + ": ").strip().lower()
     if answer in ("", "y", "yes"):
-        return True
+        return profile
     ui.status(245, "CANCELLED", "Download cancelled.")
-    return False
+    return None
 
 
 def explain_error(ui: UI, error: Exception, have_ffmpeg: bool) -> None:
@@ -161,17 +282,23 @@ def download_one(ui: UI, url: str, output: Path, color: bool) -> int:
         ui.section("02 / AVAILABLE FORMATS")
         print("  Retrieving formats from the source...\n", flush=True)
         info = extract(url)
+        groups = group_formats(info)
+        tabs = build_tabs(groups)
+        print(f"  {ui.paint(231, 'PLAN')}  This source is chosen in steps: {flow_text(tabs)}.\n")
         print(render_table(info, ascii_mode=ui.ascii, color=color))
+        if "VIDEO" not in [name for name, _ in tabs] or "AUDIO" not in [name for name, _ in tabs]:
+            ui.status(221, "NOTE", "One part is missing here, so only the available tab is offered.")
 
-        choice = choose_profile(ui, have_ffmpeg)
-        if choice is None:
+        picks = choose_formats(ui, info, groups, tabs, color)
+        if picks is None:
             return 0
-        profile, mode, container = choice
-        if not confirm(ui, mode, container, output):
+        profile = confirm(ui, output, tabs, picks["video"], picks["audio"], have_ffmpeg)
+        if profile is None:
             return 0
+        final_profile = profile[:-4] if profile.endswith("|mp3") else profile
 
-        ui.section("05 / DOWNLOAD")
-        path, elapsed = run_download(url, output, profile, ui, have_ffmpeg)
+        ui.section("04 / DOWNLOAD")
+        path, elapsed = run_download(url, output, final_profile, ui, have_ffmpeg)
         if not path:
             ui.status(203, "FAILED", "yt-dlp did not produce a file.")
             return 1

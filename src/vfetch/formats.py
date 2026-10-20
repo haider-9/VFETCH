@@ -217,19 +217,22 @@ def _render_group(rows, cols_def, idw: int, cols: int, st: _Style):
     return lines, total_of(present)
 
 
-def render_table(info: Dict[str, Any], width=None, ascii_mode: bool = False, color: bool = False) -> str:
+def render_table(info: Dict[str, Any], width=None, ascii_mode: bool = False, color: bool = False,
+                 only=None) -> str:
+    """Render the format tables. `only` restricts the output to the given group names (one tab)."""
     cols = width or shutil.get_terminal_size((100, 24)).columns
     st = _Style(color, ascii_mode)
     duration = info.get("duration")
     groups = group_formats(info)
+    names = tuple(only) if only else GROUP_NAMES
 
     rows_by_group = {}
-    for name in GROUP_NAMES:
+    for name in names:
         rows = [_make_row(item, name, duration, st) for item in groups[name]]
         if rows and name != "OTHER":
             rows[0]["tag"] = (st.star + " best " + rows[0]["tag"]).strip()
         rows_by_group[name] = rows
-    all_rows = [r for name in GROUP_NAMES for r in rows_by_group[name]]
+    all_rows = [r for name in names for r in rows_by_group[name]]
     idw = max([2] + [len(r["id"]) for r in all_rows])
 
     out = []
@@ -248,7 +251,7 @@ def render_table(info: Dict[str, Any], width=None, ascii_mode: bool = False, col
                              f"{len(all_rows)} formats") if x]
     out.append("    " + st.paint(st.MU, f" {st.dot} ".join(meta)))
 
-    for name in GROUP_NAMES:
+    for name in names:
         rows = rows_by_group[name]
         if not rows:
             continue
@@ -262,7 +265,7 @@ def render_table(info: Dict[str, Any], width=None, ascii_mode: bool = False, col
         out.append("  " + st.paint(st.MU, st.rule * max(10, total - 2)))
         out.extend(body)
 
-    if groups["VIDEO ONLY"] and groups["AUDIO ONLY"]:
+    if only is None and groups["VIDEO ONLY"] and groups["AUDIO ONLY"]:
         out.append("")
         out.append(f"  {st.paint(st.YE, st.star)} {st.paint(st.WH, 'Best pair')}"
                    + st.paint(st.MU, "  paste into option [3]:"))
